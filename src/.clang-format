@@ -1,0 +1,37 @@
+BasedOnStyle: Google
+IndentWidth: 4
+AccessModifierOffset: -4
+ColumnLimit: 120
+
+AlignEscapedNewlines: Right
+AlignTrailingComments: false
+
+AllowAllArgumentsOnNextLine: false
+AllowShortFunctionsOnASingleLine: None
+
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+
+BinPackArguments: false
+BinPackParameters: false
+
+BreakBeforeBraces: WebKit
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeComma
+BreakInheritanceList: BeforeComma
+
+
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+SortIncludes: true
+IncludeBlocks: Preserve
+
+SpaceBeforeInheritanceColon: false
+SpaceBeforeCtorInitializerColon: false
+SpaceBeforeRangeBasedForLoopColon: false
+SpacesInContainerLiterals: false
+
+Standard: Latest
+
+MaxEmptyLinesToKeep: 2
