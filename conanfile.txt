@@ -1,0 +1,10 @@
+[requires]
+eigen/3.4.0
+tsl-robin-map/1.2.2
+
+[generators]
+CMakeDeps
+CMakeToolchain
+
+[layout]
+cmake_layout

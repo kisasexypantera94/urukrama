@@ -1,12 +1,13 @@
 #pragma once
 
+#include <ranges>
 #include <vector>
+
+#include <Eigen/Eigen>
 
 namespace urukrama {
 
 template <typename T>
-struct Point {
-    std::vector<T> data;
-};
+using Point = Eigen::VectorX<T>;
 
 }  // namespace urukrama

@@ -7,7 +7,7 @@
 namespace urukrama {
 
 template <typename D>
-concept CDistance = requires(std::span<typename D::Type> a) {
+concept CDistance = requires(std::span<const typename D::Type> a) {
                         typename D::Type;
 
                         {
@@ -19,7 +19,7 @@ template <typename T>
 struct NaiveL2 {
     using Type = T;
 
-    static auto Compute(std::span<T> a, std::span<T> b)
+    static T Compute(std::span<const T> a, std::span<const T> b)
     {
         T distance = 0;
 

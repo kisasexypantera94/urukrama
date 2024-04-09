@@ -4,9 +4,13 @@ project(urukrama)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_compile_options(-O3)
+
+find_package(Eigen3 REQUIRED)
+find_package(tsl-robin-map REQUIRED)
 
 add_executable(urukrama
     main.cpp
     utils.cpp
 )
+
+target_link_libraries(urukrama Eigen3::Eigen tsl::robin_map)
