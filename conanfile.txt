@@ -1,6 +1,7 @@
 [requires]
 eigen/3.4.0
 tsl-robin-map/1.2.2
+boost/1.84.0
 
 [generators]
 CMakeDeps
@@ -8,3 +9,6 @@ CMakeToolchain
 
 [layout]
 cmake_layout
+
+[options]
+boost*:header_only=True
