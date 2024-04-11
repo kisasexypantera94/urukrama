@@ -23,7 +23,7 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
     Init();
     size_t s_idx = FindMedoid();
 
-    std::cout << s_idx << std::endl;
+    // std::cout << s_idx << std::endl;
 
     const auto process = [&](const float alpha) {
         size_t good = 0;
@@ -32,10 +32,10 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
             const auto& p = m_points[p_idx];
             auto [top, visited] = GreedySearch(s_idx, p, 1, 75);
             good += (top.begin()->second == p_idx);
-            if (p_idx % 1000 == 0) {
-                std::cout << p_idx << " " << visited.size() << " " << top.size() << " "
-                          << (top.begin()->second == p_idx) << std::endl;
-            }
+            // if (p_idx % 1000 == 0) {
+            //     std::cout << p_idx << " " << visited.size() << " " << top.size() << " "
+            //               << (top.begin()->second == p_idx) << std::endl;
+            // }
             RobustPrune(p_idx, std::move(visited), alpha);
 
             for (size_t np_idx: m_n_out[p_idx]) {
@@ -51,8 +51,6 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
                     RobustPrune(np_idx, std::move(kek), alpha);
                 }
             }
-
-            ++p_idx;
         }
 
         return good;
@@ -125,18 +123,20 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
                                                                           size_t L)
 {
     HashSet<size_t> fast_visited;
+    fast_visited.reserve(L * 2);
+
     std::vector<std::pair<T, size_t>> visited;
+    visited.reserve(L * 2);
+
     std::vector<std::pair<T, size_t>> candidates{{Distance(m_points[s_idx], query), s_idx}};
     candidates.reserve(L + 1);
-    visited.reserve(L * 2);
-    fast_visited.reserve(L * 2);
 
     while (true) {
         auto it = std::find_if(candidates.begin(), candidates.end(), [&](const auto& c) {
             return not fast_visited.contains(c.second);
         });
 
-        if (it == candidates.end()) {
+        if (it == candidates.end()) [[unlikely]] {
             break;
         }
 
@@ -153,10 +153,10 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
                     continue;
                 }
 
-                auto it = std::lower_bound(candidates.begin(), candidates.end(), std::pair{distance, n_idx});
-                candidates.insert(it, std::pair{distance, n_idx});
+                const auto value = std::make_pair(distance, n_idx);
+                candidates.insert(std::lower_bound(candidates.begin(), candidates.end(), value), value);
 
-                if (candidates.size() > L) {
+                if (candidates.size() > L) [[likely]] {
                     candidates.pop_back();
                 }
             }
@@ -173,12 +173,12 @@ void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, siz
 {
     m_n_out[p_idx].clear();
 
-    HashMap<size_t, float> coeff;
+    HashSet<size_t> skip;
 
     for (size_t i = 0; i < candidates.size(); ++i) {
         const auto& [_, c_idx] = candidates[i];
 
-        if (coeff[c_idx] > alpha) {
+        if (c_idx == p_idx or skip.contains(c_idx)) {
             continue;
         }
 
@@ -190,10 +190,15 @@ void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, siz
 
         for (size_t j = i + 1; j < candidates.size(); ++j) {
             const auto& [other_distance, other_c_idx] = candidates[j];
-            const auto distance = Distance(m_points[other_c_idx], m_points[c_idx]);
-            coeff[other_c_idx] =
-                std::max(coeff[other_c_idx],
-                         distance == 0.0 ? std::numeric_limits<float>::max() : other_distance / distance);
+
+            if (skip.contains(other_c_idx)) {
+                continue;
+            }
+
+            const T distance = Distance(m_points[other_c_idx], m_points[c_idx]);
+            if (alpha * distance <= other_distance) {
+                skip.insert(other_c_idx);
+            }
         }
     }
 }
