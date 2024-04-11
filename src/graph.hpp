@@ -27,13 +27,13 @@ private:
     template <typename K, typename V>
     using HashMap = tsl::robin_map<K, V>;
 
-    using GreedySearchResult = std::tuple<FlatMap<T, size_t>, HashSet<size_t>>;
+    using GreedySearchResult = std::tuple<std::vector<std::pair<T, size_t>>, std::vector<std::pair<T, size_t>>>;
 
 private:
     void Init();
     size_t FindMedoid();
     GreedySearchResult GreedySearch(size_t s_idx, const Point<T>& query, size_t k, size_t L);
-    void RobustPrune(size_t p_idx, FlatMap<T, size_t>&& candidates, HashSet<size_t>&& visited, float alpha);
+    void RobustPrune(size_t p_idx, std::vector<std::pair<T, size_t>>&& candidates, float alpha);
 
     static T Distance(const Point<T>& a, const Point<T>& y);
 

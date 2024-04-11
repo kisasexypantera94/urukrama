@@ -2,6 +2,7 @@
 #include "types.hpp"
 #include "utils.hpp"
 
+#include <algorithm>
 #include <boost/range/algorithm_ext/erase.hpp>
 
 #include <execution>
@@ -27,25 +28,27 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
     const auto process = [&](const float alpha) {
         size_t good = 0;
 
-        for (size_t p_idx = 0; const auto& p: points) {
+        for (size_t p_idx = 0; p_idx < m_points.size(); ++p_idx) {
+            const auto& p = m_points[p_idx];
             auto [top, visited] = GreedySearch(s_idx, p, 1, 75);
             good += (top.begin()->second == p_idx);
             if (p_idx % 1000 == 0) {
                 std::cout << p_idx << " " << visited.size() << " " << top.size() << " "
                           << (top.begin()->second == p_idx) << std::endl;
             }
-            RobustPrune(p_idx, std::move(top), std::move(visited), alpha);
+            RobustPrune(p_idx, std::move(visited), alpha);
 
             for (size_t np_idx: m_n_out[p_idx]) {
                 m_n_out[np_idx].insert(p_idx);
 
                 if (m_n_out[np_idx].size() > m_R) {
-                    FlatMap<T, size_t> kek;
+                    std::vector<std::pair<T, size_t>> kek;
                     kek.reserve(m_n_out[np_idx].size());
                     for (auto n_idx: m_n_out[np_idx]) {
-                        kek.emplace(Distance(m_points[np_idx], m_points[n_idx]), n_idx);
+                        kek.emplace_back(Distance(m_points[np_idx], m_points[n_idx]), n_idx);
                     }
-                    RobustPrune(np_idx, std::move(kek), {}, alpha);
+                    std::sort(kek.begin(), kek.end());
+                    RobustPrune(np_idx, std::move(kek), alpha);
                 }
             }
 
@@ -121,85 +124,77 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
                                                                           size_t k,
                                                                           size_t L)
 {
-    HashSet<size_t> visited;
-    FlatMap<T, size_t> candidates{{Distance(m_points[s_idx], query), s_idx}};
+    HashSet<size_t> fast_visited;
+    std::vector<std::pair<T, size_t>> visited;
+    std::vector<std::pair<T, size_t>> candidates{{Distance(m_points[s_idx], query), s_idx}};
+    candidates.reserve(L + 1);
+    visited.reserve(L * 2);
+    fast_visited.reserve(L * 2);
 
     while (true) {
-        auto candidates_end = candidates.begin() + std::min(candidates.size(), L);
-        auto it = std::find_if(candidates.begin(), candidates_end, [&](const auto& c) {
-            return not visited.contains(c.second);
+        auto it = std::find_if(candidates.begin(), candidates.end(), [&](const auto& c) {
+            return not fast_visited.contains(c.second);
         });
-
-        if (it == candidates_end) {
-            break;
-        }
-
-        const auto [min_distance, p_star_idx] = *it;
-
-        visited.insert(p_star_idx);
-
-        for (const auto n_idx: m_n_out.at(p_star_idx)) {
-            if (not visited.contains(n_idx)) {
-                const auto distance = Distance(m_points[n_idx], query);
-
-                if (auto it = candidates.lower_bound(distance); candidates.index_of(it) < L) {
-                    candidates.emplace_hint(it, Distance(m_points[n_idx], query), n_idx);
-                }
-            }
-        }
-
-        boost::range::remove_erase_if(candidates, [&, cur_idx = 0](const auto& c) mutable {
-            return cur_idx++ >= L and not visited.contains(c.second);
-        });
-    }
-
-    // boost::range::remove_erase_if(candidates,
-    //                               [&, cur_idx = 0](const auto& c) mutable { return not visited.contains(c.second);
-    //                               });
-
-    return std::make_pair(std::move(candidates), std::move(visited));
-}
-
-template <typename T>
-void GraphConstructor<T>::RobustPrune(size_t p_idx,
-                                      FlatMap<T, size_t>&& candidates,
-                                      HashSet<size_t>&& visited,
-                                      float alpha)
-{
-    if (visited.size() < m_n_out[p_idx].size()) {
-        std::swap(visited, m_n_out[p_idx]);
-    }
-
-    for (const auto& x: m_n_out[p_idx]) {
-        visited.emplace(x);
-    }
-
-    visited.erase(p_idx);
-    m_n_out[p_idx].clear();
-
-    auto last_it = candidates.begin();
-
-    while (true) {
-        const auto it =
-            std::find_if(last_it, candidates.end(), [&](const auto& c) { return visited.contains(c.second); });
 
         if (it == candidates.end()) {
             break;
         }
 
-        const auto p_star_idx = it->second;
-        last_it = it + 1;
+        const auto [min_distance, p_star_idx] = *it;
 
-        m_n_out[p_idx].insert(p_star_idx);
+        fast_visited.insert(p_star_idx);
+        visited.emplace_back(min_distance, p_star_idx);
+
+        for (const auto n_idx: m_n_out.at(p_star_idx)) {
+            if (not fast_visited.contains(n_idx)) {
+                const auto distance = Distance(m_points[n_idx], query);
+
+                if (candidates.size() > L and candidates.back().first < distance) {
+                    continue;
+                }
+
+                auto it = std::lower_bound(candidates.begin(), candidates.end(), std::pair{distance, n_idx});
+                candidates.insert(it, std::pair{distance, n_idx});
+
+                if (candidates.size() > L) {
+                    candidates.pop_back();
+                }
+            }
+        }
+    }
+
+    std::sort(visited.begin(), visited.end());
+
+    return std::make_pair(std::move(candidates), std::move(visited));
+}
+
+template <typename T>
+void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, size_t>>&& candidates, float alpha)
+{
+    m_n_out[p_idx].clear();
+
+    HashMap<size_t, float> coeff;
+
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        const auto& [_, c_idx] = candidates[i];
+
+        if (coeff[c_idx] > alpha) {
+            continue;
+        }
+
+        m_n_out[p_idx].insert(c_idx);
 
         if (m_n_out[p_idx].size() == m_R) {
             break;
         }
 
-        EraseIf(visited, [&](size_t vp_idx) {
-            return alpha * Distance(m_points[p_star_idx], m_points[vp_idx]) <=
-                   Distance(m_points[p_idx], m_points[vp_idx]);
-        });
+        for (size_t j = i + 1; j < candidates.size(); ++j) {
+            const auto& [other_distance, other_c_idx] = candidates[j];
+            const auto distance = Distance(m_points[other_c_idx], m_points[c_idx]);
+            coeff[other_c_idx] =
+                std::max(coeff[other_c_idx],
+                         distance == 0.0 ? std::numeric_limits<float>::max() : other_distance / distance);
+        }
     }
 }
 
