@@ -87,7 +87,7 @@ T GraphConstructor<T>::Distance(const Point<T>& a, const Point<T>& b)
 template <typename T>
 size_t GraphConstructor<T>::FindMedoid()
 {
-    auto centroid = std::reduce(m_points.begin(), m_points.end(), Point<T>(m_dimension)) / m_points.size();
+    Point<T> centroid = std::reduce(m_points.begin(), m_points.end(), Point<T>(m_dimension)) / m_points.size();
 
     const auto& medoid_it =
         std::ranges::min_element(m_points, {}, [&](const auto& p) { return Distance(centroid, p); });
