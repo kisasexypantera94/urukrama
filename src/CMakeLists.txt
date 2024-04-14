@@ -13,6 +13,7 @@ find_package(Boost REQUIRED)
 add_executable(urukrama
     main.cpp
     utils.cpp
+    graph.cpp
 )
 
 target_link_libraries(urukrama Eigen3::Eigen tsl::robin_map boost::boost)

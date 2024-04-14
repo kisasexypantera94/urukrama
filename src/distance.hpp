@@ -8,12 +8,10 @@ namespace urukrama {
 
 template <typename D>
 concept CDistance = requires(std::span<const typename D::Type> a) {
-                        typename D::Type;
+    typename D::Type;
 
-                        {
-                            D::Compute(a, a)
-                        } -> std::same_as<typename D::Type>;
-                    };
+    { D::Compute(a, a) } -> std::same_as<typename D::Type>;
+};
 
 template <typename T>
 struct NaiveL2 {

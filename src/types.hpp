@@ -1,8 +1,5 @@
 #pragma once
 
-#include <ranges>
-#include <vector>
-
 #include <Eigen/Eigen>
 
 namespace urukrama {

@@ -1,24 +1,20 @@
-#include "distance.hpp"
 #include "graph.hpp"
-#include "types.hpp"
 #include "utils.hpp"
 
 #include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
-
-#include <iostream>
-#include <thread>
 #include <vector>
+
+
+constexpr size_t NUM_BATCHES = 40;
 
 int main()
 {
-    auto points = urukrama::FVecsRead("/Users/dvgr/dev/data/deep1b/deep1m_base.fvecs");
+    auto points = urukrama::FVecsRead("/data/deep1m_base.fvecs");
 
     std::mt19937_64 random_engine{std::random_device{}()};
     std::ranges::shuffle(points, random_engine);
 
-
-    constexpr size_t NUM_BATCHES = 40;
     size_t batch_size = points.size() / NUM_BATCHES;
 
     boost::asio::thread_pool pool;

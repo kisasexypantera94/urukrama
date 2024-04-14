@@ -7,10 +7,10 @@ AlignEscapedNewlines: Right
 AlignTrailingComments: false
 
 AllowAllArgumentsOnNextLine: false
-AllowShortFunctionsOnASingleLine: None
+AllowShortFunctionsOnASingleLine: true
 
-AllowShortIfStatementsOnASingleLine: false
-AllowShortLoopsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
 
 BinPackArguments: false
 BinPackParameters: false

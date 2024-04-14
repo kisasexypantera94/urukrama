@@ -1,24 +1,17 @@
 #include "graph.hpp"
+
 #include "types.hpp"
-#include "utils.hpp"
 
 #include <algorithm>
-#include <boost/range/algorithm_ext/erase.hpp>
-
-#include <execution>
-#include <expected>
 #include <iostream>
-#include <limits>
 #include <random>
-#include <ranges>
-#include <set>
-#include <stdexcept>
+
 
 namespace urukrama {
 
 template <typename T>
 GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const size_t R)
-    : m_R(R), m_points(points), m_dimension(points.front().size())
+    : m_R(R), m_dimension(points.front().size()), m_points(points)
 {
     Init();
     size_t s_idx = FindMedoid();
@@ -57,7 +50,7 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
     };
 
     auto good0 = process(1.0);
-    auto good1 = process(1.2);
+    auto good1 = process(2.0);
 
     std::cout << good0 / double(m_points.size()) << " " << good1 / double(m_points.size()) << std::endl;
 
@@ -73,7 +66,7 @@ template <typename T>
 void GraphConstructor<T>::Init()
 {
     std::mt19937_64 random_engine{std::random_device{}()};
-    std::uniform_int_distribution<> dis(0, m_points.size() - 1);
+    std::uniform_int_distribution<size_t> dis(0, m_points.size() - 1);
 
     for (size_t idx = 0; idx < m_points.size(); ++idx) {
         while (m_n_out[idx].size() < m_R) {
@@ -93,27 +86,12 @@ T GraphConstructor<T>::Distance(const Point<T>& a, const Point<T>& b)
 template <typename T>
 size_t GraphConstructor<T>::FindMedoid()
 {
-    Point<T> centroid(m_dimension);
+    auto centroid = std::reduce(m_points.begin(), m_points.end(), Point<T>(m_dimension)) / m_points.size();
 
-    for (const auto& p: m_points) {
-        centroid += p;
-    }
+    const auto& medoid_it =
+        std::ranges::min_element(m_points, {}, [&](const auto& p) { return Distance(centroid, p); });
 
-    centroid /= m_points.size();
-
-    T min_distance = std::numeric_limits<T>::max();
-    size_t medoid_idx = 0;
-
-    for (size_t idx = 0; idx < m_points.size(); ++idx) {
-        auto distance = Distance(centroid, m_points[idx]);
-
-        if (distance < min_distance) {
-            min_distance = distance;
-            medoid_idx = idx;
-        }
-    }
-
-    return medoid_idx;
+    return std::distance(m_points.begin(), medoid_it);
 }
 
 template <typename T>
@@ -202,5 +180,7 @@ void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, siz
         }
     }
 }
+
+template class GraphConstructor<float>;
 
 }  // namespace urukrama
