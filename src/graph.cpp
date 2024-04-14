@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <ranges>
 
 
 namespace urukrama {
@@ -114,7 +115,7 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
             return not fast_visited.contains(c.second);
         });
 
-        if (it == candidates.end()) [[unlikely]] {
+        if (it == candidates.end()) {
             break;
         }
 
@@ -123,9 +124,9 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
         fast_visited.insert(p_star_idx);
         visited.emplace_back(min_distance, p_star_idx);
 
-        for (const auto n_idx: m_n_out.at(p_star_idx)) {
+        for (const auto n_idx: m_n_out[p_star_idx]) {
             if (not fast_visited.contains(n_idx)) {
-                const auto distance = Distance(m_points[n_idx], query);
+                const T distance = Distance(m_points[n_idx], query);
 
                 if (candidates.size() > L and candidates.back().first < distance) {
                     continue;
@@ -134,7 +135,7 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
                 const auto value = std::make_pair(distance, n_idx);
                 candidates.insert(std::lower_bound(candidates.begin(), candidates.end(), value), value);
 
-                if (candidates.size() > L) [[likely]] {
+                if (candidates.size() > L) {
                     candidates.pop_back();
                 }
             }
@@ -149,33 +150,30 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
 template <typename T>
 void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, size_t>>&& candidates, float alpha)
 {
-    m_n_out[p_idx].clear();
+    auto& p_n_out = m_n_out[p_idx];
+
+    p_n_out.clear();
 
     HashSet<size_t> skip;
 
-    for (size_t i = 0; i < candidates.size(); ++i) {
-        const auto& [_, c_idx] = candidates[i];
-
-        if (c_idx == p_idx or skip.contains(c_idx)) {
+    for (const auto& [i, p_star_idx]: candidates | std::views::values | std::views::enumerate) {
+        if (p_star_idx == p_idx or skip.contains(p_star_idx)) {
             continue;
         }
 
-        m_n_out[p_idx].insert(c_idx);
+        p_n_out.insert(p_star_idx);
 
-        if (m_n_out[p_idx].size() == m_R) {
+        if (p_n_out.size() == m_R) {
             break;
         }
 
-        for (size_t j = i + 1; j < candidates.size(); ++j) {
-            const auto& [other_distance, other_c_idx] = candidates[j];
+        for (const auto& [p_to_p_hat_dist, p_hat_idx]: candidates | std::views::drop(i + 1)) {
+            if (not skip.contains(p_hat_idx)) {
+                const T p_star_to_p_hat_distance = Distance(m_points[p_star_idx], m_points[p_hat_idx]);
 
-            if (skip.contains(other_c_idx)) {
-                continue;
-            }
-
-            const T distance = Distance(m_points[other_c_idx], m_points[c_idx]);
-            if (alpha * distance <= other_distance) {
-                skip.insert(other_c_idx);
+                if (alpha * p_star_to_p_hat_distance <= p_to_p_hat_dist) {
+                    skip.insert(p_hat_idx);
+                }
             }
         }
     }
