@@ -22,9 +22,6 @@ void EraseIf(auto& set, auto pred)
     }
 }
 
-template <typename K, typename V>
-using HashPair = boost::hash<std::pair<K, V>>;
-
-std::vector<Point<float>> FVecsRead(const char* fname);
+std::tuple<std::vector<float>, size_t, size_t> FVecsRead(const char* fname);
 
 }  // namespace urukrama

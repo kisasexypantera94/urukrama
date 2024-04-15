@@ -11,8 +11,8 @@
 namespace urukrama {
 
 template <typename T>
-GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const size_t R)
-    : m_R(R), m_dimension(points.front().size()), m_points(points)
+GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const size_t R, const size_t L)
+    : m_R(R), m_L(L), m_dimension(points.front().size()), m_points(points)
 {
     Init();
     size_t s_idx = FindMedoid();
@@ -22,9 +22,8 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
     const auto process = [&](const float alpha) {
         size_t good = 0;
 
-        for (size_t p_idx = 0; p_idx < m_points.size(); ++p_idx) {
-            const auto& p = m_points[p_idx];
-            auto [top, visited] = GreedySearch(s_idx, p, 1, 75);
+        for (const auto& [p_idx, p]: m_points | std::views::enumerate) {
+            auto [top, visited] = GreedySearch(s_idx, p, 1);
             good += (top.begin()->second == p_idx);
             // if (p_idx % 1000 == 0) {
             //     std::cout << p_idx << " " << visited.size() << " " << top.size() << " "
@@ -51,7 +50,7 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
     };
 
     auto good0 = process(1.0);
-    auto good1 = process(2.0);
+    auto good1 = process(1.2);
 
     std::cout << good0 / double(m_points.size()) << " " << good1 / double(m_points.size()) << std::endl;
 
@@ -89,26 +88,22 @@ size_t GraphConstructor<T>::FindMedoid()
 {
     Point<T> centroid = std::reduce(m_points.begin(), m_points.end(), Point<T>(m_dimension)) / m_points.size();
 
-    const auto& medoid_it =
-        std::ranges::min_element(m_points, {}, [&](const auto& p) { return Distance(centroid, p); });
+    const auto medoid_it = std::ranges::min_element(m_points, {}, [&](const auto& p) { return Distance(centroid, p); });
 
     return std::distance(m_points.begin(), medoid_it);
 }
 
 template <typename T>
-GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t s_idx,
-                                                                          const Point<T>& query,
-                                                                          size_t k,
-                                                                          size_t L)
+GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t s_idx, const Point<T>& query, size_t k)
 {
     HashSet<size_t> fast_visited;
-    fast_visited.reserve(L * 2);
+    fast_visited.reserve(m_L * 2);
 
     std::vector<std::pair<T, size_t>> visited;
-    visited.reserve(L * 2);
+    visited.reserve(m_L * 2);
 
     std::vector<std::pair<T, size_t>> candidates{{Distance(m_points[s_idx], query), s_idx}};
-    candidates.reserve(L + 1);
+    candidates.reserve(m_L + 1);
 
     while (true) {
         auto it = std::find_if(candidates.begin(), candidates.end(), [&](const auto& c) {
@@ -128,14 +123,14 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
             if (not fast_visited.contains(n_idx)) {
                 const T distance = Distance(m_points[n_idx], query);
 
-                if (candidates.size() > L and candidates.back().first < distance) {
+                if (candidates.size() > m_L and candidates.back().first < distance) {
                     continue;
                 }
 
                 const auto value = std::make_pair(distance, n_idx);
                 candidates.insert(std::lower_bound(candidates.begin(), candidates.end(), value), value);
 
-                if (candidates.size() > L) {
+                if (candidates.size() > m_L) {
                     candidates.pop_back();
                 }
             }
@@ -171,7 +166,7 @@ void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, siz
             if (not skip.contains(p_hat_idx)) {
                 const T p_star_to_p_hat_distance = Distance(m_points[p_star_idx], m_points[p_hat_idx]);
 
-                if (alpha * p_star_to_p_hat_distance <= p_to_p_hat_dist) {
+                if (alpha * float(p_star_to_p_hat_distance) <= float(p_to_p_hat_dist)) {
                     skip.insert(p_hat_idx);
                 }
             }
@@ -180,5 +175,6 @@ void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, siz
 }
 
 template class GraphConstructor<float>;
+template class GraphConstructor<uint8_t>;
 
 }  // namespace urukrama

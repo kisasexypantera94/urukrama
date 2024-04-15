@@ -32,7 +32,7 @@ std::vector<size_t> FisherYatesShuffle(std::size_t size, std::size_t max_size, s
     return res;
 }
 
-std::vector<Point<float>> FVecsRead(const char* fname)
+std::tuple<std::vector<float>, size_t, size_t> FVecsRead(const char* fname)
 {
     FILE* f = fopen(fname, "r");
     if (!f) {
@@ -50,8 +50,8 @@ std::vector<Point<float>> FVecsRead(const char* fname)
     assert(sz % ((d + 1) * 4) == 0 || !"weird file size");
     size_t n = sz / ((d + 1) * 4);
 
-    float* x = new float[n * (d + 1)];
-    size_t nr = fread(x, sizeof(float), n * (d + 1), f);
+    std::vector<float> x(n * (d + 1));
+    size_t nr = fread(x.data(), sizeof(float), n * (d + 1), f);
     assert(nr == n * (d + 1) || !"could not read whole file");
 
     std::vector<Point<float>> points;
@@ -59,10 +59,10 @@ std::vector<Point<float>> FVecsRead(const char* fname)
 
     // shift array to remove row headers
     for (size_t i = 0; i < n; i++) {
-        points.push_back(Eigen::Map<Point<float>>(x + 1 + i * (d + 1), d));
+        memmove(x.data() + i * d, x.data() + 1 + i * (d + 1), d * sizeof(float));
     }
 
-    return points;
+    return std::make_tuple(std::move(x), d, n);
 }
 
 }  // namespace urukrama

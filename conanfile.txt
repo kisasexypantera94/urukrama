@@ -2,6 +2,7 @@
 eigen/3.4.0
 tsl-robin-map/1.2.2
 boost/1.84.0
+spdlog/1.13.0
 
 [generators]
 CMakeDeps
