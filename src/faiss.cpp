@@ -41,7 +41,6 @@ std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> Compute
     // printf("centroid 3 dim 6 is %f\n", kMeans.centroids[3 * dim + 6]);
     std::vector<float> distances(vecs.size() * k / dim);
     std::vector<int64_t> indexes(vecs.size() * k / dim);
-    std::cout << vecs.size() * k / dim << std::endl;
 
     index.search(vecs.size() / dim, vecs.data(), k, distances.data(), indexes.data());
 

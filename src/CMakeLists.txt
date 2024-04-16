@@ -20,6 +20,7 @@ add_executable(urukrama
 )
 
 target_link_libraries(urukrama
+    logger
     Eigen3::Eigen
     tsl::robin_map
     boost::boost
@@ -27,3 +28,5 @@ target_link_libraries(urukrama
     OpenMP::OpenMP_CXX
     ${BLAS_LIBRARIES}
 )
+
+add_subdirectory(lib)
