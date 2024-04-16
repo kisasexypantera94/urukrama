@@ -13,27 +13,30 @@ conan-install-reldbg:
 
 configure-release: conan-install-release
 	cmake -Hsrc -Bbuild/Release \
+	-DCMAKE_C_COMPILER=clang \
 	-DCMAKE_CXX_COMPILER=clang++ \
 	-DCMAKE_BUILD_TYPE=Release \
 	-DCMAKE_TOOLCHAIN_FILE=$(current_dir)/build/Release/generators/conan_toolchain.cmake
 
 configure-reldbg: conan-install-reldbg
 	cmake -Hsrc -Bbuild/RelWithDebInfo \
+	-DCMAKE_C_COMPILER=clang \
 	-DCMAKE_CXX_COMPILER=clang++ \
 	-DCMAKE_BUILD_TYPE=RelWithDebInfo \
 	-DCMAKE_TOOLCHAIN_FILE=$(current_dir)/build/RelWithDebInfo/generators/conan_toolchain.cmake
 
 configure-debug: conan-install-debug
 	cmake -Hsrc -Bbuild/Debug \
+	-DCMAKE_C_COMPILER=clang \
 	-DCMAKE_CXX_COMPILER=clang++ \
 	-DCMAKE_BUILD_TYPE=Debug \
 	-DCMAKE_TOOLCHAIN_FILE=$(current_dir)/build/Debug/generators/conan_toolchain.cmake
 
 release: configure-release
-	make -C build/Release
+	make -j`$(nproc)` -C build/Release
 
 reldbg: configure-reldbg
-	make -C build/RelWithDebInfo
+	make -j`$(nproc)` -C build/RelWithDebInfo
 
 debug: configure-debug
-	make -C build/Debug
+	make -j`$(nproc)` -C build/Debug
