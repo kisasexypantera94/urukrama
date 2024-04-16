@@ -21,7 +21,7 @@ constexpr size_t M = 32;
 int main()
 {
     const auto batches = [] {
-        auto [points, dimension, _] = urukrama::FVecsRead("../data/deep1b/deep1M_base.fvecs");
+        auto [points, dimension, _] = urukrama::FVecsRead("/data/deep1m_base.fvecs");
         // auto pq = ComputeProductQuantization(points, dimension, M);
         const auto [__, indices, distances] = ComputeClusters(points, dimension, NUM_BATCHES, l);
 
