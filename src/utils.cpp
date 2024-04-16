@@ -62,6 +62,8 @@ std::tuple<std::vector<float>, size_t, size_t> FVecsRead(const char* fname)
         memmove(x.data() + i * d, x.data() + 1 + i * (d + 1), d * sizeof(float));
     }
 
+    x.resize(n * d);
+
     return std::make_tuple(std::move(x), d, n);
 }
 

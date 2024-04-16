@@ -5,13 +5,20 @@ project(urukrama)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../externals/sanitizers-cmake/cmake" ${CMAKE_MODULE_PATH})
 
+# Conan
 find_package(Eigen3 REQUIRED)
 find_package(tsl-robin-map REQUIRED)
 find_package(Boost REQUIRED)
-find_package(OpenMP REQUIRED)
-find_package(BLAS REQUIRED)
 find_package(spdlog REQUIRED)
+
+# apt
+find_package(BLAS REQUIRED)
+find_package(OpenMP REQUIRED)
+
+# submodules
+find_package(Sanitizers REQUIRED)
 
 add_executable(urukrama
     main.cpp
@@ -39,3 +46,5 @@ target_include_directories(urukrama
     PUBLIC
     ${CMAKE_INCLUDE_PATH}
 )
+
+add_sanitizers(urukrama)

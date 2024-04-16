@@ -5,8 +5,6 @@
 #include <faiss/impl/ProductQuantizer.h>
 #include <faiss/utils/utils.h>
 
-#include <iostream>
-
 std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> ComputeClustersCPU(
     const std::vector<float>& vecs,
     int dim,
