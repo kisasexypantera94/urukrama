@@ -21,9 +21,9 @@ constexpr size_t M = 32;
 int main()
 {
     const auto batches = [] {
-        auto [points, dimension, _] = urukrama::FVecsRead("/data/deep1m_base.fvecs");
+        auto [points, dimension, _] = urukrama::FVecsRead("../data/deep1b/deep1M_base.fvecs");
         // auto pq = ComputeProductQuantization(points, dimension, M);
-        const auto [_, indices, distances] = ComputeClusters(points, dimension, NUM_BATCHES, l);
+        const auto [__, indices, distances] = ComputeClusters(points, dimension, NUM_BATCHES, l);
 
         std::vector<std::vector<urukrama::Point<float>>> batches(NUM_BATCHES);
 
@@ -32,17 +32,6 @@ int main()
             std::optional<float> closest = std::nullopt;
 
             for (const auto& [cluster_idx, cluster_distance]: closest_clusters) {
-                // if (closest.has_value()) {
-                //     // std::cout << (cluster_distance - closest.value()) / cluster_distance << std::endl;
-                //     if ((cluster_distance - closest.value()) / cluster_distance > 0.5) {
-                //         // std::cout << "good" << std::endl;
-                //         break;
-                //     }
-                // } else {
-                //     closest.emplace(cluster_distance);
-                // }
-
-                // std::cout << p_idx << std::endl;
                 batches[cluster_idx].push_back(
                     Eigen::Map<urukrama::Point<float>>(points.data() + p_idx * dimension, dimension));
             }
@@ -54,13 +43,11 @@ int main()
             std::ranges::shuffle(batch, random_engine);
         }
 
-        // std::sort(batches.begin(), batches.end(), [](const auto& a, const auto& b) { return a.size() < b.size(); });
-
         return batches;
     }();
 
 
-    boost::asio::thread_pool pool(4);
+    boost::asio::thread_pool pool;
     std::atomic<size_t> sum_proc_time = 0;
 
     for (const auto& [batch_idx, batch]: batches | std::views::enumerate) {

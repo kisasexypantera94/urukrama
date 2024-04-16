@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28.3)
 
 project(urukrama)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
 
@@ -11,6 +11,7 @@ find_package(tsl-robin-map REQUIRED)
 find_package(Boost REQUIRED)
 find_package(OpenMP REQUIRED)
 find_package(BLAS REQUIRED)
+find_package(spdlog REQUIRED)
 
 add_executable(urukrama
     main.cpp
@@ -20,7 +21,7 @@ add_executable(urukrama
 )
 
 target_link_libraries(urukrama
-    logger
+    spdlog::spdlog_header_only
     Eigen3::Eigen
     tsl::robin_map
     boost::boost
@@ -29,4 +30,12 @@ target_link_libraries(urukrama
     ${BLAS_LIBRARIES}
 )
 
-add_subdirectory(lib)
+target_link_directories(urukrama
+    PUBLIC
+    ${CMAKE_LIBRARY_PATH}
+)
+
+target_include_directories(urukrama
+    PUBLIC
+    ${CMAKE_INCLUDE_PATH}
+)

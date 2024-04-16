@@ -13,3 +13,5 @@ cmake_layout
 
 [options]
 boost*:header_only=True
+spdlog*:header_only=True
+spdlog*:use_std_fmt=True
