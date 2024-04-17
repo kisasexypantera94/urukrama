@@ -5,7 +5,9 @@ project(urukrama)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/../externals/sanitizers-cmake/cmake" ${CMAKE_MODULE_PATH})
+# set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
 
 # Conan
 find_package(Eigen3 REQUIRED)

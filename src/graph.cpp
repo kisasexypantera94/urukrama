@@ -143,7 +143,7 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
 }
 
 template <typename T>
-void GraphConstructor<T>::RobustPrune(size_t p_idx, std::vector<std::pair<T, size_t>>&& candidates, float alpha)
+void GraphConstructor<T>::RobustPrune(size_t p_idx, const std::vector<std::pair<T, size_t>>& candidates, float alpha)
 {
     auto& p_n_out = m_n_out[p_idx];
 

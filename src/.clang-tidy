@@ -1,0 +1,9 @@
+Checks: "
+  bugprone-*,
+  cppcoreguidelines-*,
+  clang-analyzer-*,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-avoid-magic-numbers,
+"
+WarningsAsErrors: ''
+FormatStyle: none

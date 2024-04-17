@@ -16,6 +16,13 @@ class GraphConstructor {
 public:
     GraphConstructor(std::span<const Point<T>> points, const size_t R, const size_t L);
 
+    GraphConstructor(const GraphConstructor&) = delete;
+    GraphConstructor(GraphConstructor&&) = delete;
+    GraphConstructor& operator=(const GraphConstructor&) = delete;
+    GraphConstructor& operator=(GraphConstructor&&) = delete;
+
+    ~GraphConstructor() = default;
+
 private:
     template <typename K, typename V>
     using FlatMap = boost::container::flat_map<K, V>;
@@ -32,7 +39,7 @@ private:
     void Init();
     size_t FindMedoid();
     GreedySearchResult GreedySearch(size_t s_idx, const Point<T>& query, size_t k);
-    void RobustPrune(size_t p_idx, std::vector<std::pair<T, size_t>>&& candidates, float alpha);
+    void RobustPrune(size_t p_idx, const std::vector<std::pair<T, size_t>>& candidates, float alpha);
 
     static T Distance(const Point<T>& a, const Point<T>& y);
 
