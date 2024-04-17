@@ -5,8 +5,8 @@
 Urukrama is a simple and efficient implementation of DiskANN algorithm, developed for fun and self-education.
 
 ## Setup
-Build and start a container
 ```bash
+git submodule update --init --recursive
 docker compose up -d
 ```
 attach to the container and run
