@@ -4,7 +4,6 @@
 
 #include <tsl/robin_map.h>
 #include <tsl/robin_set.h>
-#include <boost/container/flat_map.hpp>
 
 #include <span>
 
@@ -24,9 +23,6 @@ public:
     ~GraphConstructor() = default;
 
 private:
-    template <typename K, typename V>
-    using FlatMap = boost::container::flat_map<K, V>;
-
     template <typename K>
     using HashSet = tsl::robin_set<K>;
 
@@ -48,7 +44,7 @@ private:
     const size_t m_L;
     const size_t m_dimension;
     const std::span<const Point<T>> m_points;
-    HashMap<size_t, HashSet<size_t>> m_n_out;  // TODO: robin_map
+    HashMap<size_t, HashSet<size_t>> m_n_out;
 };
 
 }  // namespace urukrama

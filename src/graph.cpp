@@ -1,5 +1,6 @@
 #include "graph.hpp"
 
+#include "flat_map.hpp"
 #include "types.hpp"
 
 #include <algorithm>
@@ -102,8 +103,9 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
     std::vector<std::pair<T, size_t>> visited;
     visited.reserve(m_L * 2);
 
-    std::vector<std::pair<T, size_t>> candidates{{Distance(m_points[s_idx], query), s_idx}};
+    BoundedFlatMap<T, size_t> candidates(m_L);
     candidates.reserve(m_L + 1);
+    candidates.emplace(Distance(m_points[s_idx], query), s_idx);
 
     while (true) {
         auto it = std::find_if(candidates.begin(), candidates.end(), [&](const auto& c) {
@@ -121,18 +123,7 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
 
         for (const auto n_idx: m_n_out[p_star_idx]) {
             if (not fast_visited.contains(n_idx)) {
-                const T distance = Distance(m_points[n_idx], query);
-
-                if (candidates.size() > m_L and candidates.back().first < distance) {
-                    continue;
-                }
-
-                const auto value = std::make_pair(distance, n_idx);
-                candidates.insert(std::lower_bound(candidates.begin(), candidates.end(), value), value);
-
-                if (candidates.size() > m_L) {
-                    candidates.pop_back();
-                }
+                candidates.emplace(Distance(m_points[n_idx], query), n_idx);
             }
         }
     }
