@@ -23,9 +23,9 @@ private:
     using GreedySearchResult = std::tuple<std::vector<std::pair<T, size_t>>, std::vector<std::pair<T, size_t>>>;
 
 private:
-    std::vector<HashSet<size_t>> InitNeighbors() const;
+    [[nodiscard]] std::vector<HashSet<size_t>> InitNeighbors() const;
 
-    void ProcessPoints(size_t s_idx) const;
+    void BuildIndexInBatches(size_t s_idx) const;
 
     [[nodiscard]] size_t FindMedoid() const;
 

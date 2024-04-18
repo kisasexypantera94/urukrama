@@ -9,7 +9,6 @@
 #include <boost/asio/thread_pool.hpp>
 
 #include <algorithm>
-#include <iostream>
 #include <latch>
 #include <random>
 #include <ranges>
@@ -23,13 +22,7 @@ Graph<T>::Graph(std::span<const Point<T>> points, const size_t R, const size_t L
 {
     const size_t s_idx = FindMedoid();
 
-    ProcessPoints(s_idx);
-
-    // for (auto [p_idx, edges]: m_n_out) {
-    //     for (auto e: edges) {
-    //         std::cout << "(" << p_idx << ", " << e << "), " << std::endl;
-    //     }
-    // }
+    BuildIndexInBatches(s_idx);
 }
 
 
@@ -53,9 +46,11 @@ std::vector<HashSet<size_t>> Graph<T>::InitNeighbors() const
 }
 
 template <typename T>
-void Graph<T>::ProcessPoints(size_t s_idx) const
+void Graph<T>::BuildIndexInBatches(size_t s_idx) const
 {
+    // TODO: try refactor, latches and index managing is ugly af
     boost::asio::thread_pool tp;
+
     auto n_out = InitNeighbors();
 
     for (const float alpha: {1.0f, 1.2f}) {
@@ -64,17 +59,17 @@ void Graph<T>::ProcessPoints(size_t s_idx) const
             const auto batch =
                 m_points | std::views::enumerate | std::views::drop(start) | std::views::take(end - start + 1);
 
-            std::atomic<size_t> good = 0;
+            std::atomic<size_t> cnt_found = 0;
 
             {
                 std::latch latch(batch.size());
 
                 for (const auto& [p_idx, p]: batch) {
-                    boost::asio::post(tp, [&, p_idx = p_idx, p = p] {
+                    boost::asio::post(tp, [&, p_idx = p_idx, &p = p] {
                         auto [top, visited] = GreedySearch(s_idx, p, n_out, 1);
-                        good += (top.begin()->second == p_idx);
+                        cnt_found += (top.begin()->second == p_idx);
 
-                        n_out[p_idx] = RobustPrune(p_idx, std::move(visited), alpha);
+                        n_out[p_idx] = RobustPrune(p_idx, visited, alpha);
                         latch.count_down();
                     });
                 }
@@ -108,7 +103,7 @@ void Graph<T>::ProcessPoints(size_t s_idx) const
 
                             std::sort(candidates.begin(), candidates.end());
 
-                            n_out[b_idx] = RobustPrune(b_idx, std::move(candidates), alpha);
+                            n_out[b_idx] = RobustPrune(b_idx, candidates, alpha);
                         }
 
                         latch.count_down();
@@ -118,7 +113,10 @@ void Graph<T>::ProcessPoints(size_t s_idx) const
                 latch.wait();
             }
 
-            ksp::log::Info("Processed batch: range=[{}..{}], precision=[{}]", start, end, good / double(batch.size()));
+            ksp::log::Info("Processed batch: range=[{}..{}], precision=[{}]",
+                           start,
+                           end,
+                           float(cnt_found) / batch.size());
         }
     }
 

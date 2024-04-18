@@ -1,9 +1,7 @@
-#include "faiss.hpp"
 #include "graph.hpp"
 #include "utils.hpp"
 
 #include <chrono>
-#include <optional>
 #include <ranges>
 #include <vector>
 
@@ -11,9 +9,8 @@ int main()
 {
     using namespace std::chrono;
 
-
     const auto points = [] {
-        auto [flat_points, dimension, num_points] = urukrama::FVecsRead("../data/deep1b/deep1M_base.fvecs");
+        auto [flat_points, dimension, num_points] = urukrama::FVecsRead("/data/deep1M_base.fvecs");
         std::vector<urukrama::Point<float>> points;
 
         for (const auto& p: flat_points | std::views::chunk(dimension)) {
@@ -22,7 +19,6 @@ int main()
 
         std::mt19937_64 random_engine{std::random_device{}()};
         std::ranges::shuffle(points, random_engine);
-        points.resize(points.size());
 
         return points;
     }();

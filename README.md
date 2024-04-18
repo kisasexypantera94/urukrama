@@ -17,3 +17,5 @@ make release
 ## References
 * **DiskANN: Fast Accurate Billion-point Nearest Neighbor Search on a Single Node.**
     Suhas Jayaram Subramanya, Rohan Kadekodi, Ravishankar Krishaswamy, and Harsha Vardhan Simhadri, 2019.
+* **ParlayANN: Scalable and Deterministic Parallel Graph-Based Approximate Nearest Neighbor Search Algorithms**.
+    Magdalen Dobson Manohar, Zheqi Shen, Guy E. Blelloch, Laxman Dhulipala, Yan Gu, Harsha Vardhan Simhadri, Yihan Sun, 2023.
