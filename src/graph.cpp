@@ -12,7 +12,7 @@
 namespace urukrama {
 
 template <typename T>
-GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const size_t R, const size_t L)
+Graph<T>::Graph(std::span<const Point<T>> points, const size_t R, const size_t L)
     : m_R(R), m_L(L), m_dimension(points.front().size()), m_points(points)
 {
     Init();
@@ -33,7 +33,7 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
 
 
 template <typename T>
-void GraphConstructor<T>::Init()
+void Graph<T>::Init()
 {
     std::mt19937_64 random_engine{std::random_device{}()};
     std::uniform_int_distribution<size_t> dis(0, m_points.size() - 1);
@@ -48,7 +48,7 @@ void GraphConstructor<T>::Init()
 }
 
 template <typename T>
-size_t GraphConstructor<T>::ProcessPoints(size_t s_idx, float alpha)
+size_t Graph<T>::ProcessPoints(size_t s_idx, float alpha)
 {
     size_t good = 0;
 
@@ -80,13 +80,13 @@ size_t GraphConstructor<T>::ProcessPoints(size_t s_idx, float alpha)
 }
 
 template <typename T>
-T GraphConstructor<T>::Distance(const Point<T>& a, const Point<T>& b)
+T Graph<T>::Distance(const Point<T>& a, const Point<T>& b)
 {
     return (a - b).squaredNorm();
 }
 
 template <typename T>
-size_t GraphConstructor<T>::FindMedoid()
+size_t Graph<T>::FindMedoid()
 {
     Point<T> centroid = std::reduce(m_points.begin(), m_points.end(), Point<T>(m_dimension)) / m_points.size();
 
@@ -96,7 +96,7 @@ size_t GraphConstructor<T>::FindMedoid()
 }
 
 template <typename T>
-GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t s_idx, const Point<T>& query, size_t k)
+Graph<T>::GreedySearchResult Graph<T>::GreedySearch(size_t s_idx, const Point<T>& query, size_t k)
 {
     HashSet<size_t> fast_visited;
     fast_visited.reserve(m_L * 2);
@@ -135,7 +135,7 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
 }
 
 template <typename T>
-void GraphConstructor<T>::RobustPrune(size_t p_idx, const std::vector<std::pair<T, size_t>>& candidates, float alpha)
+void Graph<T>::RobustPrune(size_t p_idx, const std::vector<std::pair<T, size_t>>& candidates, float alpha)
 {
     auto& p_n_out = m_n_out[p_idx];
 
@@ -166,7 +166,7 @@ void GraphConstructor<T>::RobustPrune(size_t p_idx, const std::vector<std::pair<
     }
 }
 
-template class GraphConstructor<float>;
-template class GraphConstructor<uint8_t>;
+template class Graph<float>;
+template class Graph<uint8_t>;
 
 }  // namespace urukrama

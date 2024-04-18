@@ -12,13 +12,13 @@
 #include <ranges>
 #include <vector>
 
-constexpr size_t NUM_BATCHES = 40;
+constexpr size_t NUM_BATCHES = 8;
 constexpr size_t l = 2;
 constexpr size_t M = 32;
 
 auto PrepareBatches()
 {
-    auto [points, dimension, num_points] = urukrama::FVecsRead("/data/deep1M_base.fvecs");
+    auto [points, dimension, num_points] = urukrama::FVecsRead("../data/deep1b/deep1M_base.fvecs");
     // auto pq = ComputeProductQuantization(points, dimension, M);
     const auto [clusters, indices, distances] = ComputeClusters(points, dimension, NUM_BATCHES, l);
 
@@ -50,7 +50,7 @@ int main()
 {
     const auto batches = PrepareBatches();
 
-    boost::asio::thread_pool pool;
+    boost::asio::thread_pool pool(8);
     std::atomic<size_t> sum_proc_time = 0;
 
     for (const auto& [batch_idx, batch]: batches | std::views::enumerate) {
@@ -59,7 +59,7 @@ int main()
 
 
             auto t0 = high_resolution_clock::now();
-            urukrama::GraphConstructor gc(std::span{batch}, 70, 75);
+            urukrama::Graph gc(std::span{batch}, 70, 75);
             auto duration = duration_cast<seconds>(high_resolution_clock::now() - t0).count();
 
             sum_proc_time += duration;

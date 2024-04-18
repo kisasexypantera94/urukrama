@@ -11,16 +11,16 @@
 namespace urukrama {
 
 template <typename T>
-class GraphConstructor {
+class Graph {
 public:
-    GraphConstructor(std::span<const Point<T>> points, const size_t R, const size_t L);
+    Graph(std::span<const Point<T>> points, const size_t R, const size_t L);
 
-    GraphConstructor(const GraphConstructor&) = delete;
-    GraphConstructor(GraphConstructor&&) = delete;
-    GraphConstructor& operator=(const GraphConstructor&) = delete;
-    GraphConstructor& operator=(GraphConstructor&&) = delete;
+    Graph(const Graph&) = delete;
+    Graph(Graph&&) = delete;
+    Graph& operator=(const Graph&) = delete;
+    Graph& operator=(Graph&&) = delete;
 
-    ~GraphConstructor() = default;
+    ~Graph() = default;
 
 private:
     template <typename K>
