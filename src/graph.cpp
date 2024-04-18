@@ -23,9 +23,7 @@ Graph<T>::Graph(std::span<const Point<T>> points, const size_t R, const size_t L
 {
     const size_t s_idx = FindMedoid();
 
-    const auto good = ProcessPoints(s_idx);
-
-    std::cout << good / double(m_points.size()) << std::endl;
+    ProcessPoints(s_idx);
 
     // for (auto [p_idx, edges]: m_n_out) {
     //     for (auto e: edges) {
@@ -55,38 +53,26 @@ std::vector<HashSet<size_t>> Graph<T>::InitNeighbors() const
 }
 
 template <typename T>
-size_t Graph<T>::ProcessPoints(size_t s_idx) const
+void Graph<T>::ProcessPoints(size_t s_idx) const
 {
-    std::atomic<size_t> good = 0;
-
     boost::asio::thread_pool tp;
     auto n_out = InitNeighbors();
 
     for (const float alpha: {1.0f, 1.2f}) {
-        size_t start = 0;
-        size_t end = -1;
-        while (end + 1 < m_points.size()) {
-            start = end + 1;
-            end = std::min(start * 2, start + 20000);
-            ksp::log::Info("Batch: [{}..{}]", start, end);
-
+        for (size_t start = 0, end = start; start < m_points.size(); start = end + 1,
+                    end = std::min({start * 2, start + size_t(float(m_points.size()) * 0.02), m_points.size() - 1})) {
             const auto batch =
                 m_points | std::views::enumerate | std::views::drop(start) | std::views::take(end - start + 1);
 
-            good = 0;
+            std::atomic<size_t> good = 0;
 
-            ksp::log::Info("Step 1");
             {
                 std::latch latch(batch.size());
 
                 for (const auto& [p_idx, p]: batch) {
-                    boost::asio::post(tp, [&, p_idx = p_idx, &p = p] {
+                    boost::asio::post(tp, [&, p_idx = p_idx, p = p] {
                         auto [top, visited] = GreedySearch(s_idx, p, n_out, 1);
                         good += (top.begin()->second == p_idx);
-
-                        // if (p_idx % 1000 == 0) {
-                        //     ksp::log::Info("{} {}", p_idx, good.load());
-                        // }
 
                         n_out[p_idx] = RobustPrune(p_idx, std::move(visited), alpha);
                         latch.count_down();
@@ -96,7 +82,6 @@ size_t Graph<T>::ProcessPoints(size_t s_idx) const
                 latch.wait();
             }
 
-            ksp::log::Info("Step 2");
             HashMap<size_t, HashSet<size_t>> affected_points;
             for (const auto& [p_idx, p]: batch) {
                 for (const auto& n_idx: n_out[p_idx]) {
@@ -104,7 +89,6 @@ size_t Graph<T>::ProcessPoints(size_t s_idx) const
                 }
             }
 
-            ksp::log::Info("Step 3");
             {
                 std::latch latch(long(affected_points.size()));
 
@@ -124,7 +108,7 @@ size_t Graph<T>::ProcessPoints(size_t s_idx) const
 
                             std::sort(candidates.begin(), candidates.end());
 
-                            RobustPrune(b_idx, std::move(candidates), alpha);
+                            n_out[b_idx] = RobustPrune(b_idx, std::move(candidates), alpha);
                         }
 
                         latch.count_down();
@@ -134,13 +118,11 @@ size_t Graph<T>::ProcessPoints(size_t s_idx) const
                 latch.wait();
             }
 
-            ksp::log::Info("Precision: {}", good / double(batch.size()));
+            ksp::log::Info("Processed batch: range=[{}..{}], precision=[{}]", start, end, good / double(batch.size()));
         }
     }
 
     tp.join();
-
-    return good;
 }
 
 template <typename T>

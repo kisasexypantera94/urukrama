@@ -25,16 +25,18 @@ private:
 private:
     std::vector<HashSet<size_t>> InitNeighbors() const;
 
-    size_t ProcessPoints(size_t s_idx) const;
+    void ProcessPoints(size_t s_idx) const;
 
-    size_t FindMedoid() const;
+    [[nodiscard]] size_t FindMedoid() const;
 
-    GreedySearchResult GreedySearch(size_t s_idx,
-                                    const Point<T>& query,
-                                    const std::vector<HashSet<size_t>>& n_out,
-                                    size_t k) const;
+    [[nodiscard]] GreedySearchResult GreedySearch(size_t s_idx,
+                                                  const Point<T>& query,
+                                                  const std::vector<HashSet<size_t>>& n_out,
+                                                  size_t k) const;
 
-    HashSet<size_t> RobustPrune(size_t p_idx, const std::vector<std::pair<T, size_t>>& candidates, float alpha) const;
+    [[nodiscard]] HashSet<size_t> RobustPrune(size_t p_idx,
+                                              const std::vector<std::pair<T, size_t>>& candidates,
+                                              float alpha) const;
 
     static T Distance(const Point<T>& a, const Point<T>& y);
 
