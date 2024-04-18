@@ -33,6 +33,7 @@ private:
 
 private:
     void Init();
+    size_t ProcessPoints(size_t s_idx, float alpha);
     size_t FindMedoid();
     GreedySearchResult GreedySearch(size_t s_idx, const Point<T>& query, size_t k);
     void RobustPrune(size_t p_idx, const std::vector<std::pair<T, size_t>>& candidates, float alpha);

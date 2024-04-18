@@ -4,9 +4,9 @@
 #include <vector>
 
 template <typename K, typename V>
-class BoundedFlatMap {
+class BoundedSortedVector {
 public:
-    BoundedFlatMap(size_t limit): m_limit(limit) {}
+    BoundedSortedVector(size_t limit): m_limit(limit) {}
 
 public:
     void emplace(const K& key, const V& val)

@@ -1,6 +1,6 @@
 #include "graph.hpp"
 
-#include "flat_map.hpp"
+#include "bounded_sorted_vector.hpp"
 #include "types.hpp"
 
 #include <algorithm>
@@ -16,42 +16,11 @@ GraphConstructor<T>::GraphConstructor(std::span<const Point<T>> points, const si
     : m_R(R), m_L(L), m_dimension(points.front().size()), m_points(points)
 {
     Init();
-    size_t s_idx = FindMedoid();
 
-    // std::cout << s_idx << std::endl;
+    const size_t s_idx = FindMedoid();
 
-    const auto process = [&](const float alpha) {
-        size_t good = 0;
-
-        for (const auto& [p_idx, p]: m_points | std::views::enumerate) {
-            auto [top, visited] = GreedySearch(s_idx, p, 1);
-            good += (top.begin()->second == p_idx);
-            // if (p_idx % 1000 == 0) {
-            //     std::cout << p_idx << " " << visited.size() << " " << top.size() << " "
-            //               << (top.begin()->second == p_idx) << std::endl;
-            // }
-            RobustPrune(p_idx, std::move(visited), alpha);
-
-            for (size_t np_idx: m_n_out[p_idx]) {
-                m_n_out[np_idx].insert(p_idx);
-
-                if (m_n_out[np_idx].size() > m_R) {
-                    std::vector<std::pair<T, size_t>> kek;
-                    kek.reserve(m_n_out[np_idx].size());
-                    for (auto n_idx: m_n_out[np_idx]) {
-                        kek.emplace_back(Distance(m_points[np_idx], m_points[n_idx]), n_idx);
-                    }
-                    std::sort(kek.begin(), kek.end());
-                    RobustPrune(np_idx, std::move(kek), alpha);
-                }
-            }
-        }
-
-        return good;
-    };
-
-    auto good0 = process(1.0);
-    auto good1 = process(1.2);
+    const auto good0 = ProcessPoints(s_idx, 1.0);
+    const auto good1 = ProcessPoints(s_idx, 1.2);
 
     std::cout << good0 / double(m_points.size()) << " " << good1 / double(m_points.size()) << std::endl;
 
@@ -79,6 +48,38 @@ void GraphConstructor<T>::Init()
 }
 
 template <typename T>
+size_t GraphConstructor<T>::ProcessPoints(size_t s_idx, float alpha)
+{
+    size_t good = 0;
+
+    for (const auto& [p_idx, p]: m_points | std::views::enumerate) {
+        auto [top, visited] = GreedySearch(s_idx, p, 1);
+        good += (top.begin()->second == p_idx);
+
+        RobustPrune(p_idx, std::move(visited), alpha);
+
+        for (size_t np_idx: m_n_out[p_idx]) {
+            m_n_out[np_idx].insert(p_idx);
+
+            if (m_n_out[np_idx].size() > m_R) {
+                std::vector<std::pair<T, size_t>> candidates;
+                candidates.reserve(m_n_out[np_idx].size());
+
+                for (const auto n_idx: m_n_out[np_idx]) {
+                    candidates.emplace_back(Distance(m_points[np_idx], m_points[n_idx]), n_idx);
+                }
+
+                std::sort(candidates.begin(), candidates.end());
+
+                RobustPrune(np_idx, std::move(candidates), alpha);
+            }
+        }
+    }
+
+    return good;
+}
+
+template <typename T>
 T GraphConstructor<T>::Distance(const Point<T>& a, const Point<T>& b)
 {
     return (a - b).squaredNorm();
@@ -103,7 +104,7 @@ GraphConstructor<T>::GreedySearchResult GraphConstructor<T>::GreedySearch(size_t
     std::vector<std::pair<T, size_t>> visited;
     visited.reserve(m_L * 2);
 
-    BoundedFlatMap<T, size_t> candidates(m_L);
+    BoundedSortedVector<T, size_t> candidates(m_L);
     candidates.reserve(m_L + 1);
     candidates.emplace(Distance(m_points[s_idx], query), s_idx);
 
