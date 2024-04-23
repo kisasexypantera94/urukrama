@@ -133,10 +133,18 @@ T InMemoryGraph<T>::Distance(const Point<T>& a, const Point<T>& b)
 template <typename T>
 size_t InMemoryGraph<T>::FindMedoid() const
 {
-    Point<T> centroid =
-        std::reduce(m_points.begin(), m_points.end(), Point<T>(m_points.front().size())) / m_points.size();
+    Point<T> centroid(m_points.front().size());
+
+    for (const auto& [p_idx, p]: m_points | std::views::enumerate) {
+        centroid += (p - centroid) / (p_idx + 1);
+        centroid = centroid.unaryExpr([](const T x) { return std::isfinite(x) ? x : T(0); });
+    }
 
     const auto medoid_it = std::ranges::min_element(m_points, {}, [&](const auto& p) { return Distance(centroid, p); });
+
+    ksp::log::Info("Found medoid: idx=[{}], dist=[{}]",
+                   std::distance(m_points.begin(), medoid_it),
+                   Distance(centroid, *medoid_it));
 
     return std::distance(m_points.begin(), medoid_it);
 }

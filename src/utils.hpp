@@ -1,8 +1,5 @@
 #pragma once
 
-#include <boost/functional/hash.hpp>
-
-#include <random>
 #include <vector>
 
 namespace urukrama {
