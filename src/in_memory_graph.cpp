@@ -47,19 +47,26 @@ template <typename T>
 std::vector<HashSet<size_t>> InMemoryGraph<T>::BuildIndexInBatches(size_t s_idx) const
 {
     auto n_out = InitNeighbors();
-    auto prev_n_out = n_out;
 
     for (const float alpha: {1.0f, 1.2f}) {
         for (size_t start = 0, end = start; start < m_points.size(); start = end + 1,
                     end = std::min({start * 2, start + size_t(float(m_points.size()) * 0.02), m_points.size() - 1})) {
             std::atomic<size_t> cnt_found = 0;
 
+            std::vector<HashSet<size_t>> n_out_deltas(end - start + 1);
+
             tbb::parallel_for(tbb::blocked_range<size_t>(start, end + 1), [&](tbb::blocked_range<size_t> r) {
                 for (size_t p_idx = r.begin(); p_idx < r.end(); ++p_idx) {
-                    const auto [top, visited] = GreedySearch(s_idx, m_points[p_idx], prev_n_out, 1);
+                    const auto [top, visited] = GreedySearch(s_idx, m_points[p_idx], n_out, 1);
                     cnt_found += (top.begin()->second == p_idx);
 
-                    n_out[p_idx] = RobustPrune(p_idx, visited, alpha);
+                    n_out_deltas[p_idx - start] = RobustPrune(p_idx, visited, alpha);
+                }
+            });
+
+            tbb::parallel_for(tbb::blocked_range<size_t>(start, end + 1), [&](tbb::blocked_range<size_t> r) {
+                for (size_t p_idx = r.begin(); p_idx < r.end(); ++p_idx) {
+                    n_out[p_idx] = n_out_deltas[p_idx - start];
                 }
             });
 
@@ -103,16 +110,8 @@ std::vector<HashSet<size_t>> InMemoryGraph<T>::BuildIndexInBatches(size_t s_idx)
 
                             n_out[b_idx] = RobustPrune(b_idx, candidates, alpha);
                         }
-
-                        prev_n_out[b_idx] = n_out[b_idx];
                     }
                 });
-
-            tbb::parallel_for(tbb::blocked_range<size_t>(start, end + 1), [&](tbb::blocked_range<size_t> r) {
-                for (size_t p_idx = r.begin(); p_idx < r.end(); ++p_idx) {
-                    prev_n_out[p_idx] = n_out[p_idx];
-                }
-            });
 
             ksp::log::Info("Processed batch: range=[{}..{}], precision=[{}]",
                            start,
@@ -206,7 +205,7 @@ HashSet<size_t> InMemoryGraph<T>::RobustPrune(size_t p_idx,
             continue;
         }
 
-        new_n_out.insert(p_star_idx);
+        new_n_out.emplace(p_star_idx);
 
         if (new_n_out.size() == m_R) {
             break;
