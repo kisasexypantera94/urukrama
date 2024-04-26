@@ -3,20 +3,19 @@
 #include <cstddef>
 #include <vector>
 
-template <typename K, typename V>
+template <typename V>
 class BoundedSortedVector {
 public:
     BoundedSortedVector(size_t limit): m_limit(limit) {}
 
 public:
-    void emplace(const K& key, const V& val)
+    void insert(const V& val)
     {
-        if (m_data.size() > m_limit and m_data.back().first < key) {
+        if (m_data.size() > m_limit and m_data.back() < val) {
             return;
         }
 
-        const auto element = std::make_pair(key, val);
-        m_data.insert(std::lower_bound(m_data.begin(), m_data.end(), element), element);
+        m_data.emplace(std::lower_bound(m_data.begin(), m_data.end(), val), val);
 
         if (m_data.size() > m_limit) {
             m_data.pop_back();
@@ -34,9 +33,9 @@ public:
         m_data.resize(m_limit);
     }
 
-    operator std::vector<std::pair<K, V>>() && { return std::move(m_data); }
+    operator std::vector<V>() && { return std::move(m_data); }
 
 private:
     size_t m_limit;
-    std::vector<std::pair<K, V>> m_data;
+    std::vector<V> m_data;
 };

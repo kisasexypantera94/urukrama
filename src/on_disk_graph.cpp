@@ -68,9 +68,9 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto dist
     std::vector<std::pair<T, size_t>> visited;
     visited.reserve(m_L * 2);
 
-    BoundedSortedVector<T, size_t> candidates(m_L);
+    BoundedSortedVector<std::pair<T, size_t>> candidates(m_L);
     candidates.reserve(m_L + 1);
-    candidates.emplace(distance_func(m_medoid_idx), m_medoid_idx);
+    candidates.insert({distance_func(m_medoid_idx), m_medoid_idx});
 
     while (true) {
         auto it = std::find_if(candidates.begin(), candidates.end(), [&](const auto& c) {
@@ -90,7 +90,7 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto dist
 
         for (const size_t n_idx: n_out | std::views::filter([](const size_t n_idx) { return n_idx != DUMMY_P_IDX; })) {
             if (not fast_visited.contains(n_idx)) {
-                candidates.emplace(distance_func(n_idx), n_idx);
+                candidates.insert({distance_func(n_idx), n_idx});
             }
         }
     }
