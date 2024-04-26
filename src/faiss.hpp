@@ -1,5 +1,7 @@
 #pragma once
 
+#include <faiss/IndexPQ.h>
+
 #include <cstdint>
 #include <vector>
 
@@ -11,7 +13,4 @@ std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> Compute
     size_t number_of_iterations = 20,
     bool verbose = true);
 
-std::vector<uint8_t> ComputeProductQuantization(const std::vector<float>& vecs,
-                                                size_t dim,
-                                                size_t M = 32,
-                                                size_t nbits = 8);
+faiss::IndexPQ BuildIndexPQ(const std::vector<float>& vecs, size_t dim, size_t M = 32, size_t nbits = 8);

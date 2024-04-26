@@ -35,7 +35,24 @@ OnDiskGraph<T>::OnDiskGraph(std::string_view index_filename)
 }
 
 template <typename T>
+std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchWithPQ(const faiss::IndexPQ& index_pq,
+                                                                     const Point<T>& query,
+                                                                     size_t k) const
+{
+    auto computer = index_pq.get_FlatCodesDistanceComputer();
+    computer->set_query(query.data());
+
+    return GreedySearchInternal([&](size_t p_idx) { return (*computer)(faiss::idx_t(p_idx)); }, k);
+}
+
+template <typename T>
 std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearch(const Point<T>& query, size_t k) const
+{
+    return GreedySearchInternal([&](size_t p_idx) { return FullPrecisionDistance(p_idx, query); }, k);
+}
+
+template <typename T>
+std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto distance_func, size_t k) const
 {
     HashSet<size_t> fast_visited;
     fast_visited.reserve(m_L * 2);
@@ -45,7 +62,7 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearch(const Point<T>& q
 
     BoundedSortedVector<T, size_t> candidates(m_L);
     candidates.reserve(m_L + 1);
-    candidates.emplace(Distance(m_medoid_idx, query), m_medoid_idx);
+    candidates.emplace(distance_func(m_medoid_idx), m_medoid_idx);
 
     while (true) {
         auto it = std::find_if(candidates.begin(), candidates.end(), [&](const auto& c) {
@@ -65,7 +82,7 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearch(const Point<T>& q
 
         for (const size_t n_idx: n_out | std::views::filter([](const size_t n_idx) { return n_idx != DUMMY_P_IDX; })) {
             if (not fast_visited.contains(n_idx)) {
-                candidates.emplace(Distance(n_idx, query), n_idx);
+                candidates.emplace(distance_func(n_idx), n_idx);
             }
         }
     }
@@ -163,7 +180,7 @@ OnDiskGraph<float>::DataType OnDiskGraph<float>::GetDataType()
 }
 
 template <typename T>
-T OnDiskGraph<T>::Distance(const size_t a_idx, const Point<T>& b) const
+T OnDiskGraph<T>::FullPrecisionDistance(const size_t a_idx, const Point<T>& b) const
 {
     std::span point = GetPoint(a_idx);
 

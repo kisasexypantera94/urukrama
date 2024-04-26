@@ -51,9 +51,10 @@ std::vector<HashSet<size_t>> InMemoryGraph<T>::BuildIndexInBatches(size_t s_idx)
     for (const float alpha: {1.0f, 1.2f}) {
         for (size_t start = 0, end = start; start < m_points.size(); start = end + 1,
                     end = std::min({start * 2, start + size_t(float(m_points.size()) * 0.02), m_points.size() - 1})) {
-            std::atomic<size_t> cnt_found = 0;
+            const size_t batch_size = end - start + 1;
 
-            std::vector<HashSet<size_t>> n_out_deltas(end - start + 1);
+            std::atomic<size_t> cnt_found = 0;
+            std::vector<HashSet<size_t>> n_out_deltas(batch_size);
 
             tbb::parallel_for(tbb::blocked_range<size_t>(start, end + 1), [&](tbb::blocked_range<size_t> r) {
                 for (size_t p_idx = r.begin(); p_idx < r.end(); ++p_idx) {
@@ -116,7 +117,7 @@ std::vector<HashSet<size_t>> InMemoryGraph<T>::BuildIndexInBatches(size_t s_idx)
             ksp::log::Info("Processed batch: range=[{}..{}], precision=[{}]",
                            start,
                            end,
-                           float(cnt_found) / float(end - start + 1));
+                           float(cnt_found) / float(batch_size));
         }
     }
 

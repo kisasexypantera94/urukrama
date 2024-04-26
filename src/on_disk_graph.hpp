@@ -3,6 +3,7 @@
 #include "types.hpp"
 
 #include <mio/mmap.hpp>
+#include <faiss/IndexPQ.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -22,6 +23,7 @@ public:
 
 public:
     std::vector<std::pair<T, size_t>> GreedySearch(const Point<T>& query, size_t k) const;
+    std::vector<std::pair<T, size_t>> GreedySearchWithPQ(const faiss::IndexPQ& index_pq, const Point<T>& query, size_t k) const;
 
     static void Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename);
 
@@ -41,6 +43,8 @@ private:
     };
 
 private:
+    std::vector<std::pair<T, size_t>> GreedySearchInternal(auto distance_func, size_t k) const;
+
     std::span<const float> GetPoint(size_t p_idx) const;
     std::span<const size_t> GetPointNeighbors(size_t p_idx) const;
 
@@ -49,7 +53,7 @@ private:
     template <typename U>
     U ReadAs(size_t offset) const;
 
-    T Distance(const size_t a_idx, const Point<T>& b) const;
+    T FullPrecisionDistance(const size_t a_idx, const Point<T>& b) const;
 
     static DataType GetDataType();
 

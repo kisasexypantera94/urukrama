@@ -2,6 +2,7 @@
 
 #include <faiss/Clustering.h>
 #include <faiss/IndexFlat.h>
+#include <faiss/IndexPQ.h>
 #include <faiss/impl/ProductQuantizer.h>
 
 using faiss::idx_t;
@@ -56,18 +57,12 @@ std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> Compute
     return ComputeClustersCPU(vecs, dim, number_of_clusters, k, number_of_iterations, verbose);
 }
 
-std::vector<uint8_t> ComputeProductQuantization(const std::vector<float>& vecs, size_t dim, size_t M, size_t nbits)
+faiss::IndexPQ BuildIndexPQ(const std::vector<float>& vecs, size_t dim, size_t M, size_t nbits)
 {
-    faiss::ProductQuantizer pq(dim, M, nbits);
+    faiss::IndexPQ index_pq(int(dim), M, nbits);
 
-    pq.cp.niter = 50;
-    pq.cp.verbose = false;  // print out per-iteration stats
+    index_pq.train(idx_t(vecs.size() / dim), vecs.data());
+    index_pq.add(idx_t(vecs.size() / dim), vecs.data());
 
-    pq.verbose = false;
-    pq.train(vecs.size() / dim, vecs.data());
-
-    std::vector<uint8_t> codes(vecs.size() / dim * M);
-    pq.compute_codes(vecs.data(), codes.data(), vecs.size() / dim);
-
-    return codes;
+    return index_pq;
 }
