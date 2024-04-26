@@ -42,7 +42,15 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchWithPQ(const faiss
     auto computer = index_pq.get_FlatCodesDistanceComputer();
     computer->set_query(query.data());
 
-    return GreedySearchInternal([&](size_t p_idx) { return (*computer)(faiss::idx_t(p_idx)); }, k);
+    auto top = GreedySearchInternal([&](size_t p_idx) { return (*computer)(faiss::idx_t(p_idx)); }, k);
+
+    for (auto& [distance, p_idx]: top) {
+        distance = FullPrecisionDistance(p_idx, query);
+    }
+
+    std::sort(top.begin(), top.end());
+
+    return top;
 }
 
 template <typename T>
