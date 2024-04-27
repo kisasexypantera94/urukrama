@@ -1,6 +1,7 @@
 #include "faiss.hpp"
 #include "in_memory_graph.hpp"
 #include "on_disk_graph.hpp"
+#include "on_disk_lloyd.hpp"
 #include "utils.hpp"
 
 #include "lib/logger/logger.hpp"
@@ -48,13 +49,14 @@ void BuildIndex(const std::vector<urukrama::Point<float>>& points)
         flat_points.emplace_back(x);
     }
 
-    auto index_pq = BuildIndexPQ(flat_points, points.front().size());
+    auto index_pq = urukrama::BuildIndexPQ(flat_points, points.front().size());
     faiss::write_index(&index_pq, "deep1m.index_pq");
 }
 
 int main()
 {
     auto points = [] {
+        urukrama::ComputeClustersOnDisk("/data/deep1M_base.fvecs", 40, 128);
         auto [flat_points, dimension, num_points] = urukrama::FVecsRead("/data/deep1M_base.fvecs");
         std::vector<urukrama::Point<float>> points;
 

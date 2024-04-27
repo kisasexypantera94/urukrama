@@ -28,6 +28,7 @@ add_executable(urukrama
     in_memory_graph.cpp
     on_disk_graph.cpp
     faiss.cpp
+    on_disk_lloyd.cpp
 )
 
 target_link_libraries(urukrama

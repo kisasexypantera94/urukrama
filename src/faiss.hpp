@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <vector>
 
+namespace urukrama {
+
 std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> ComputeClusters(
     const std::vector<float>& vecs,
     size_t dim,
@@ -14,3 +16,5 @@ std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> Compute
     bool verbose = true);
 
 faiss::IndexPQ BuildIndexPQ(const std::vector<float>& vecs, size_t dim, size_t M = 32, size_t nbits = 8);
+
+}  // namespace urukrama

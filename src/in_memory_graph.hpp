@@ -2,8 +2,6 @@
 
 #include "types.hpp"
 
-#include <boost/noncopyable.hpp>
-
 
 namespace urukrama {
 
@@ -11,7 +9,7 @@ template <typename T>
 class OnDiskGraph;
 
 template <typename T>
-class InMemoryGraph: boost::noncopyable {
+class InMemoryGraph {
     friend OnDiskGraph<T>;
 
 public:
@@ -26,7 +24,6 @@ private:
     [[nodiscard]] std::vector<HashSet<size_t>> BuildIndexInBatches(size_t s_idx) const;
 
     [[nodiscard]] std::vector<HashSet<size_t>> InitNeighbors() const;
-
 
     [[nodiscard]] GreedySearchResult GreedySearch(size_t s_idx,
                                                   const Point<T>& query,

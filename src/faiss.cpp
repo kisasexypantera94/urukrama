@@ -5,6 +5,8 @@
 #include <faiss/IndexPQ.h>
 #include <faiss/impl/ProductQuantizer.h>
 
+namespace urukrama {
+
 using faiss::idx_t;
 
 std::tuple<std::vector<float>, std::vector<int64_t>, std::vector<float>> ComputeClustersCPU(
@@ -66,3 +68,5 @@ faiss::IndexPQ BuildIndexPQ(const std::vector<float>& vecs, size_t dim, size_t M
 
     return index_pq;
 }
+
+}  // namespace urukrama

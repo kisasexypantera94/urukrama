@@ -2,8 +2,9 @@
 
 #include "types.hpp"
 
-#include <mio/mmap.hpp>
 #include <faiss/IndexPQ.h>
+#include <boost/noncopyable.hpp>
+#include <mio/mmap.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -17,13 +18,15 @@ template <typename T>
 class InMemoryGraph;
 
 template <typename T>
-class OnDiskGraph {
+class OnDiskGraph: boost::noncopyable {
 public:
     OnDiskGraph(std::string_view index_filename);
 
 public:
     std::vector<std::pair<T, size_t>> GreedySearch(const Point<T>& query, size_t k) const;
-    std::vector<std::pair<T, size_t>> GreedySearchWithPQ(const faiss::IndexPQ& index_pq, const Point<T>& query, size_t k) const;
+    std::vector<std::pair<T, size_t>> GreedySearchWithPQ(const faiss::IndexPQ& index_pq,
+                                                         const Point<T>& query,
+                                                         size_t k) const;
 
     static void Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename);
 
