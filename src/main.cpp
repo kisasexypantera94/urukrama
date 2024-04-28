@@ -56,7 +56,7 @@ void BuildIndex(const std::vector<urukrama::Point<float>>& points)
 int main()
 {
     auto points = [] {
-        urukrama::ComputeClustersOnDisk("/data/deep1M_base.fvecs", 40, 128);
+        urukrama::ComputeClustersOnDisk("/data/deep1M_base.fvecs", 40, 50);
         auto [flat_points, dimension, num_points] = urukrama::FVecsRead("/data/deep1M_base.fvecs");
         std::vector<urukrama::Point<float>> points;
 
