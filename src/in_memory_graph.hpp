@@ -5,13 +5,10 @@
 
 namespace urukrama {
 
-template <typename T, bool WRITE_ACCESS>
-class OnDiskGraph;
-
 template <typename T>
 class InMemoryGraph {
-    friend OnDiskGraph<T, false>;
-    friend OnDiskGraph<T, true>;
+    template <typename, bool>
+    friend class OnDiskGraph;
 
 public:
     InMemoryGraph(std::vector<Point<T>>&& points, size_t R, size_t L);
