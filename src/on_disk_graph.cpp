@@ -5,6 +5,7 @@
 
 #include "lib/logger/logger.hpp"
 
+#include <cassert>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -13,9 +14,9 @@
 namespace urukrama {
 
 
-template <typename T>
-OnDiskGraph<T>::OnDiskGraph(std::string_view index_filename)
-    : m_mmap_src(mio::mmap_source(index_filename))
+template <typename T, bool MUTABLE>
+OnDiskGraph<T, MUTABLE>::OnDiskGraph(std::string_view index_filename)
+    : m_mmap(MemMap(index_filename))
     , m_points_number(ReadAs<size_t>(POINTS_NUM_OFFSET))
     , m_points_dimension(ReadAs<size_t>(POINTS_DIM_OFFSET))
     , m_R(ReadAs<size_t>(R_OFFSET))
@@ -34,10 +35,10 @@ OnDiskGraph<T>::OnDiskGraph(std::string_view index_filename)
                    m_medoid_idx);
 }
 
-template <typename T>
-std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchWithPQ(const faiss::IndexPQ& index_pq,
-                                                                     const Point<T>& query,
-                                                                     size_t k) const
+template <typename T, bool MUTABLE>
+std::vector<std::pair<T, size_t>> OnDiskGraph<T, MUTABLE>::GreedySearchWithPQ(const faiss::IndexPQ& index_pq,
+                                                                              const Point<T>& query,
+                                                                              size_t k) const
 {
     auto computer = index_pq.get_FlatCodesDistanceComputer();
     computer->set_query(query.data());
@@ -53,17 +54,17 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchWithPQ(const faiss
     return top;
 }
 
-template <typename T>
-std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearch(const Point<T>& query, size_t k) const
+template <typename T, bool MUTABLE>
+std::vector<std::pair<T, size_t>> OnDiskGraph<T, MUTABLE>::GreedySearch(const Point<T>& query, size_t k) const
 {
     return GreedySearchInternal([&](size_t p_idx) { return FullPrecisionDistance(p_idx, query); }, k);
 }
 
-template <typename T>
-std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto distance_func, size_t k) const
+template <typename T, bool MUTABLE>
+std::vector<std::pair<T, size_t>> OnDiskGraph<T, MUTABLE>::GreedySearchInternal(auto distance_func, size_t k) const
 {
     if (m_medoid_idx == DUMMY_P_IDX) {
-        ksp::log::Warn("Graph is empty");
+        ksp::log::Warn("Medoid is not set");
         return {};
     }
 
@@ -106,8 +107,8 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto dist
     return candidates;
 }
 
-template <typename T>
-void OnDiskGraph<T>::Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename)
+template <typename T, bool MUTABLE>
+void OnDiskGraph<T, MUTABLE>::Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename)
 {
     const auto& [R, L, points, medoid_idx, n_out] = in_mem_graph;
 
@@ -121,10 +122,12 @@ void OnDiskGraph<T>::Write(const InMemoryGraph<T>& in_mem_graph, std::string_vie
                   [&n_out = n_out](size_t p_idx) { return n_out[p_idx]; });
 }
 
-template <typename T>
-void OnDiskGraph<T>::WriteEmpty(std::string_view filename, size_t dimension, size_t num_points, size_t R, size_t L)
+template <typename T, bool MUTABLE>
+void OnDiskGraph<T, MUTABLE>::WriteEmpty(
+    std::string_view filename, size_t dimension, size_t num_points, size_t R, size_t L)
 {
     WriteInternal(filename,
+                  // generates N zero points with required dimension
                   std::views::iota(size_t(0), num_points) | std::views::transform([&](size_t) {
                       return std::views::repeat(0) | std::views::take(dimension);
                   }),
@@ -136,15 +139,15 @@ void OnDiskGraph<T>::WriteEmpty(std::string_view filename, size_t dimension, siz
                   [](size_t p_idx) { return std::vector<size_t>{}; });
 }
 
-template <typename T>
-void OnDiskGraph<T>::WriteInternal(std::string_view filename,
-                                   const auto& points,
-                                   size_t dimension,
-                                   size_t num_points,
-                                   size_t R,
-                                   size_t L,
-                                   size_t medoid_idx,
-                                   auto get_n_out)
+template <typename T, bool MUTABLE>
+void OnDiskGraph<T, MUTABLE>::WriteInternal(std::string_view filename,
+                                            const auto& points,
+                                            size_t dimension,
+                                            size_t num_points,
+                                            size_t R,
+                                            size_t L,
+                                            size_t medoid_idx,
+                                            auto get_n_out)
 {
     std::ofstream ofs(filename.data(), std::ios::binary | std::ios::trunc);
 
@@ -181,62 +184,124 @@ void OnDiskGraph<T>::WriteInternal(std::string_view filename,
     }
 }
 
-template <typename T>
-void OnDiskGraph<T>::Merge(std::string_view merged_filename, const InMemoryGraph<T>& in_mem_graph)
-{
-    std::ofstream ofs(merged_filename.data(), std::ios::binary | std::ios::trunc);
+template <typename T, bool MUTABLE>
+void OnDiskGraph<T, MUTABLE>::Merge(const InMemoryGraph<T>& in_mem_graph, std::span<const size_t> indices)
+    requires(MUTABLE)
 
-    OnDiskGraph<T> merge_graph(merged_filename);
+{
+    const auto& [R, L, points, medoid_idx, n_out] = in_mem_graph;
+
+    assert(m_R == R);
+    assert(m_L == L);
+
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
+    reinterpret_cast<size_t&>(m_mmap[MEDOID_IDX_OFFSET]) = medoid_idx;
+    // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
+
+    for (const auto& [p_idx, p]: std::views::zip(indices, points)) {
+        // update point
+        {
+            auto point = GetPointMut(p_idx);
+
+            for (const auto& [dst, src]: std::views::zip(point, p)) {
+                dst = src;
+            }
+        }
+
+        // update neighbors
+        {
+            auto nbrs = GetPointNeighborsMut(p_idx);
+
+
+            BoundedSortedVector<std::pair<T, size_t>> new_n_out(R);
+
+            for (size_t n_idx: nbrs | std::views::filter([](size_t n_idx) { return n_idx != DUMMY_P_IDX; })) {
+                new_n_out.insert({FullPrecisionDistance(n_idx, p), n_idx});
+            }
+
+            for (size_t n_idx: n_out[p_idx]) {
+                new_n_out.insert({FullPrecisionDistance(n_idx, p), n_idx});
+            }
+
+            for (const auto& [dst, src]: std::views::zip(nbrs, new_n_out | std::views::values)) {
+                dst = src;
+            }
+        }
+    }
 }
 
-template <typename T>
-std::span<const float> OnDiskGraph<T>::GetPoint(size_t p_idx) const
+template <typename T, bool MUTABLE>
+std::span<const float> OnDiskGraph<T, MUTABLE>::GetPoint(size_t p_idx) const
 {
     // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
-    size_t point_offset = GetPointSectionOffset(p_idx);
-    auto point = std::span{reinterpret_cast<const float*>(&m_mmap_src[point_offset]), m_points_dimension};
+    size_t point_offset = GetPointOffset(p_idx);
+    auto point = std::span{reinterpret_cast<const float*>(&m_mmap[point_offset]), m_points_dimension};
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
 
     return point;
 }
 
-template <typename T>
-std::span<const size_t> OnDiskGraph<T>::GetPointNeighbors(size_t p_idx) const
+template <typename T, bool MUTABLE>
+std::span<const size_t> OnDiskGraph<T, MUTABLE>::GetPointNeighbors(size_t p_idx) const
 {
     // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
-    size_t point_neighbors_offset = GetPointSectionOffset(p_idx) + m_points_dimension * sizeof(T);
-    auto point_neighbors = std::span{reinterpret_cast<const size_t*>(&m_mmap_src[point_neighbors_offset]), m_R};
+    size_t point_neighbors_offset = GetPointNeighborsOffset(p_idx);
+    auto point_neighbors = std::span{reinterpret_cast<const size_t*>(&m_mmap[point_neighbors_offset]), m_R};
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
 
     return point_neighbors;
 }
 
+template <typename T, bool MUTABLE>
+std::span<float> OnDiskGraph<T, MUTABLE>::GetPointMut(size_t p_idx)
+    requires(MUTABLE)
+{
+    auto span = GetPoint(p_idx);
+    return std::span{const_cast<float*>(span.data()), span.size()};
+}
 
-template <typename T>
-size_t OnDiskGraph<T>::GetPointSectionOffset(size_t p_idx) const
+template <typename T, bool MUTABLE>
+std::span<size_t> OnDiskGraph<T, MUTABLE>::GetPointNeighborsMut(size_t p_idx)
+    requires(MUTABLE)
+{
+    auto span = GetPointNeighbors(p_idx);
+    return std::span{const_cast<size_t*>(span.data()), span.size()};
+}
+
+
+template <typename T, bool MUTABLE>
+size_t OnDiskGraph<T, MUTABLE>::GetPointOffset(size_t p_idx) const
 {
     return POINTS_OFFSET + p_idx * (m_points_dimension * sizeof(T) + m_R * sizeof(size_t));
 }
 
-template <typename T>
+template <typename T, bool MUTABLE>
+size_t OnDiskGraph<T, MUTABLE>::GetPointNeighborsOffset(size_t p_idx) const
+{
+    return GetPointOffset(p_idx) + m_points_dimension * sizeof(T);
+}
+
+template <typename T, bool MUTABLE>
 template <typename U>
-U OnDiskGraph<T>::ReadAs(size_t offset) const
+U OnDiskGraph<T, MUTABLE>::ReadAs(size_t offset) const
 {
     U val;
     // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
-    std::memcpy(reinterpret_cast<char*>(&val), &m_mmap_src[offset], sizeof(val));
+    std::memcpy(reinterpret_cast<char*>(&val), &m_mmap[offset], sizeof(val));
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
     return val;
 }
 
-template <>
-OnDiskGraph<float>::DataType OnDiskGraph<float>::GetDataType()
+template <typename T, bool MUTABLE>
+OnDiskGraph<T, MUTABLE>::DataType OnDiskGraph<T, MUTABLE>::GetDataType()
 {
-    return DataType::F32;
+    if constexpr (std::same_as<T, float>) {
+        return DataType::F32;
+    }
 }
 
-template <typename T>
-T OnDiskGraph<T>::FullPrecisionDistance(const size_t a_idx, const Point<T>& b) const
+template <typename T, bool MUTABLE>
+T OnDiskGraph<T, MUTABLE>::FullPrecisionDistance(const size_t a_idx, const Point<T>& b) const
 {
     std::span point = GetPoint(a_idx);
 
@@ -246,6 +311,7 @@ T OnDiskGraph<T>::FullPrecisionDistance(const size_t a_idx, const Point<T>& b) c
 }
 
 
-template class OnDiskGraph<float>;
+template class OnDiskGraph<float, false>;
+template class OnDiskGraph<float, true>;
 
 }  // namespace urukrama

@@ -11,13 +11,14 @@
 #include <limits>
 #include <span>
 #include <string_view>
+#include <type_traits>
 
 namespace urukrama {
 
 template <typename T>
 class InMemoryGraph;
 
-template <typename T>
+template <typename T, bool MUTABLE = false>
 class OnDiskGraph: boost::noncopyable {
 public:
     OnDiskGraph(std::string_view index_filename);
@@ -28,12 +29,17 @@ public:
                                                          const Point<T>& query,
                                                          size_t k) const;
 
+    void Merge(const InMemoryGraph<T>& in_mem_graph, std::span<const size_t> indices)
+        requires(MUTABLE);
+
     static void Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename);
 
     static void WriteEmpty(std::string_view filename, size_t dimension, size_t num_points, size_t R, size_t L);
-    static void Merge(std::string_view merged_filename, const InMemoryGraph<T>& in_mem_graph);
+
 
 private:
+    using MemMap = std::conditional<MUTABLE, mio::mmap_sink, mio::mmap_source>::type;
+
     static constexpr size_t POINTS_NUM_OFFSET = 0;
     static constexpr size_t POINTS_DIM_OFFSET = POINTS_NUM_OFFSET + sizeof(size_t);
     static constexpr size_t DTYPE_OFFSET = POINTS_DIM_OFFSET + sizeof(size_t);
@@ -54,7 +60,14 @@ private:
     std::span<const float> GetPoint(size_t p_idx) const;
     std::span<const size_t> GetPointNeighbors(size_t p_idx) const;
 
-    size_t GetPointSectionOffset(size_t p_idx) const;
+    std::span<float> GetPointMut(size_t p_idx)
+        requires(MUTABLE);
+
+    std::span<size_t> GetPointNeighborsMut(size_t p_idx)
+        requires(MUTABLE);
+
+    size_t GetPointOffset(size_t p_idx) const;
+    size_t GetPointNeighborsOffset(size_t p_idx) const;
 
     template <typename U>
     U ReadAs(size_t offset) const;
@@ -73,7 +86,7 @@ private:
                               auto get_n_out);
 
 private:
-    mio::mmap_source m_mmap_src;
+    MemMap m_mmap;
     size_t m_points_number;
     size_t m_points_dimension;
     size_t m_R;
