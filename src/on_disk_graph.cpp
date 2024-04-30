@@ -15,7 +15,7 @@ namespace urukrama {
 
 template <typename T>
 OnDiskGraph<T>::OnDiskGraph(std::string_view index_filename)
-    : m_mmap_src(mio::mmap_source(index_filename, 0, mio::map_entire_file))
+    : m_mmap_src(mio::mmap_source(index_filename))
     , m_points_number(ReadAs<size_t>(POINTS_NUM_OFFSET))
     , m_points_dimension(ReadAs<size_t>(POINTS_DIM_OFFSET))
     , m_R(ReadAs<size_t>(R_OFFSET))
@@ -62,6 +62,11 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearch(const Point<T>& q
 template <typename T>
 std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto distance_func, size_t k) const
 {
+    if (m_medoid_idx == DUMMY_P_IDX) {
+        ksp::log::Warn("Graph is empty");
+        return {};
+    }
+
     HashSet<size_t> fast_visited;
     fast_visited.reserve(m_L * 2);
 
@@ -104,6 +109,43 @@ std::vector<std::pair<T, size_t>> OnDiskGraph<T>::GreedySearchInternal(auto dist
 template <typename T>
 void OnDiskGraph<T>::Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename)
 {
+    const auto& [R, L, points, medoid_idx, n_out] = in_mem_graph;
+
+    WriteInternal(filename,
+                  points,
+                  points.front().size(),
+                  points.size(),
+                  R,
+                  L,
+                  medoid_idx,
+                  [&n_out = n_out](size_t p_idx) { return n_out[p_idx]; });
+}
+
+template <typename T>
+void OnDiskGraph<T>::WriteEmpty(std::string_view filename, size_t dimension, size_t num_points, size_t R, size_t L)
+{
+    WriteInternal(filename,
+                  std::views::iota(size_t(0), num_points) | std::views::transform([&](size_t) {
+                      return std::views::repeat(0) | std::views::take(dimension);
+                  }),
+                  dimension,
+                  num_points,
+                  R,
+                  L,
+                  DUMMY_P_IDX,
+                  [](size_t p_idx) { return std::vector<size_t>{}; });
+}
+
+template <typename T>
+void OnDiskGraph<T>::WriteInternal(std::string_view filename,
+                                   const auto& points,
+                                   size_t dimension,
+                                   size_t num_points,
+                                   size_t R,
+                                   size_t L,
+                                   size_t medoid_idx,
+                                   auto get_n_out)
+{
     std::ofstream ofs(filename.data(), std::ios::binary | std::ios::trunc);
 
     if (not ofs.is_open()) {
@@ -121,9 +163,7 @@ void OnDiskGraph<T>::Write(const InMemoryGraph<T>& in_mem_graph, std::string_vie
         return SizeOf<Ts...>{};
     };
 
-    const auto& [R, L, points, medoid_idx, n_out] = in_mem_graph;
-
-    const auto points_offset = write(points.size(), points.front().size(), GetDataType(), R, L, medoid_idx);
+    const auto points_offset = write(num_points, dimension, GetDataType(), R, L, medoid_idx);
     static_assert(points_offset.value == POINTS_OFFSET);
 
     for (const auto& [p_idx, p]: points | std::views::enumerate) {
@@ -131,14 +171,22 @@ void OnDiskGraph<T>::Write(const InMemoryGraph<T>& in_mem_graph, std::string_vie
             write(x);
         }
 
-        for (const size_t n_idx: n_out[p_idx]) {
+        for (const size_t n_idx: get_n_out(p_idx)) {
             write(n_idx);
         }
 
-        for (size_t i = 0; i < R - n_out[p_idx].size(); ++i) {
+        for (size_t i = 0; i < R - get_n_out(p_idx).size(); ++i) {
             write(DUMMY_P_IDX);
         }
     }
+}
+
+template <typename T>
+void OnDiskGraph<T>::Merge(std::string_view merged_filename, const InMemoryGraph<T>& in_mem_graph)
+{
+    std::ofstream ofs(merged_filename.data(), std::ios::binary | std::ios::trunc);
+
+    OnDiskGraph<T> merge_graph(merged_filename);
 }
 
 template <typename T>

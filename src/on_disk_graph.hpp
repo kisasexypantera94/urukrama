@@ -30,6 +30,9 @@ public:
 
     static void Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename);
 
+    static void WriteEmpty(std::string_view filename, size_t dimension, size_t num_points, size_t R, size_t L);
+    static void Merge(std::string_view merged_filename, const InMemoryGraph<T>& in_mem_graph);
+
 private:
     static constexpr size_t POINTS_NUM_OFFSET = 0;
     static constexpr size_t POINTS_DIM_OFFSET = POINTS_NUM_OFFSET + sizeof(size_t);
@@ -59,6 +62,15 @@ private:
     T FullPrecisionDistance(const size_t a_idx, const Point<T>& b) const;
 
     static DataType GetDataType();
+
+    static void WriteInternal(std::string_view filename,
+                              const auto& points,
+                              size_t dimension,
+                              size_t num_points,
+                              size_t R,
+                              size_t L,
+                              size_t medoid_idx,
+                              auto get_n_out);
 
 private:
     mio::mmap_source m_mmap_src;

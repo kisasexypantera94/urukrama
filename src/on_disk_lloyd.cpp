@@ -91,9 +91,9 @@ std::vector<std::vector<size_t>> ComputeClustersOnDisk(std::string_view fvecs_fi
     for (size_t p_idx = 0; p_idx < num_points; ++p_idx) {
         size_t offset = p_idx * (dimension + 1) * 4;
 
-        BoundedSortedVector<std::pair<float, size_t>> closest(l);
-
         Eigen::Map<const Point<float>> point(reinterpret_cast<const float*>(mmap.data() + 4 + offset), dimension);
+
+        BoundedSortedVector<std::pair<float, size_t>> closest(l);
 
         for (const auto& [c_idx, c]: centroids | std::views::enumerate) {
             closest.insert({(c - point).squaredNorm(), c_idx});
