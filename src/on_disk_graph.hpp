@@ -32,10 +32,11 @@ public:
     void Merge(const InMemoryGraph<T>& in_mem_graph, std::span<const size_t> indices)
         requires(MUTABLE);
 
-    static void Write(const InMemoryGraph<T>& in_mem_graph, std::string_view filename);
+public:
+    static OnDiskGraph Init(
+        std::string_view filename, size_t medoid_idx, size_t dimension, size_t num_points, size_t R, size_t L);
 
-    static void WriteEmpty(std::string_view filename, size_t dimension, size_t num_points, size_t R, size_t L);
-
+    static void WriteGraph(std::string_view filename, const InMemoryGraph<T>& in_mem_graph);
 
 private:
     using MemMap = std::conditional<MUTABLE, mio::mmap_sink, mio::mmap_source>::type;
@@ -58,11 +59,10 @@ private:
     std::vector<std::pair<T, size_t>> GreedySearchInternal(auto distance_func, size_t k) const;
 
     std::span<const float> GetPoint(size_t p_idx) const;
-    std::span<const size_t> GetPointNeighbors(size_t p_idx) const;
-
     std::span<float> GetPointMut(size_t p_idx)
         requires(MUTABLE);
 
+    std::span<const size_t> GetPointNeighbors(size_t p_idx) const;
     std::span<size_t> GetPointNeighborsMut(size_t p_idx)
         requires(MUTABLE);
 
@@ -74,8 +74,7 @@ private:
 
     T FullPrecisionDistance(const size_t a_idx, const Point<T>& b) const;
 
-    static DataType GetDataType();
-
+private:
     static void WriteInternal(std::string_view filename,
                               const auto& points,
                               size_t dimension,
@@ -84,6 +83,9 @@ private:
                               size_t L,
                               size_t medoid_idx,
                               auto get_n_out);
+
+    static constexpr DataType GetDataType();
+
 
 private:
     MemMap m_mmap;
@@ -95,9 +97,9 @@ private:
 };
 
 template <typename T>
-void WriteOnDisk(const InMemoryGraph<T>& graph, std::string_view filename)
+void WriteOnDisk(std::string_view filename, const InMemoryGraph<T>& graph)
 {
-    OnDiskGraph<T>::Write(graph, filename);
+    OnDiskGraph<T>::WriteGraph(filename, graph);
 }
 
 }  // namespace urukrama
